@@ -1,5 +1,5 @@
 ---
-title: "Hello, Penguins!"
+title: "Hello, World!"
 format: pdf
 editor: visual
 execute:
@@ -29,7 +29,6 @@ The plot below shows the relationship between flipper and bill lengths of these 
 ```{r}
 #| label: plot-penguins
 #| warning: false
-#| echo: false
 
 ggplot(penguins, 
        aes(x = flipper_length_mm, y = bill_length_mm)) +
