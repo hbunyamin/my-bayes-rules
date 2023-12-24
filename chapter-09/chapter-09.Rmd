@@ -1,0 +1,218 @@
+---
+title: 'Chapter 9: Simple Normal Regression'
+author: "Hendra Bunyamin"
+date: "2023-12-22"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+```
+
+```{r}
+library(bayesrules)
+library(tidyverse)
+library(rstan)
+library(rstanarm)
+library(bayesplot)
+library(tidybayes)
+library(janitor)
+library(broom.mixed)
+```
+
+## Building the regression model
+
+Dalam subbab ini, kita akan membangun framework dari model regresi **Normal Bayesian**.
+
+### Putting it all together
+
+$$\begin{aligned}
+  \text{data: } Y_i \mid \beta_0, \beta_1, \sigma &\sim N(\mu_i, \sigma^2) \text{ dengan }\mu_i = \beta_0 + \beta_1 X_i  \\
+  \text{priors: } \beta_0 &\sim N(m_0, s_0^2) \\
+                  \beta_1 &\sim N(m_1, s_1^2) \\
+                  \sigma  &\sim \text{Exp}(l).
+\end{aligned}
+$$
+
+Model building dilakukan dengan one step at a time, yaitu:       
+   
+* Perhatikan apakah $Y$ diskrit atau kontinu.
+* Tuliskan bahwa the mean of $Y$ sebagai fungsi dari prediktor $X$ (contoh: $\mu = \beta_0 + \beta_1 X$).
+
+## Tuning prior models for regression parameters
+
+```{r}
+plot_normal(mean=5000, sd=1000) + labs( x="beta_0c", y = "pdf")
+plot_normal(mean=100, sd=40) + labs( x="beta_1", y = "pdf")
+plot_gamma(shape=1, rate=0.0008) + labs( x="sigma", y = "pdf")
+```
+
+Kita akan memodelkan _ridership_ ($Y$) dengan _temperature_ ($X$) sebagai berikut:
+
+$$\begin{aligned}
+  \text{data: } Y_i \mid \beta_0, \beta_1, \sigma &\sim N(\mu_i, \sigma^2) \text{ dengan }\mu_i = \beta_0 + \beta_1 X_i  \\
+  \text{priors: } \beta_{0c} &\sim N(5000, 1000^2) \\
+                  \beta_1 &\sim N(100, 40^2) \\
+                  \sigma  &\sim \text{Exp}(0.0008).
+\end{aligned}
+$$
+
+## Posterior simulation
+
+```{r}
+# Load and plot data
+data("bikes")
+ggplot(bikes, aes( x = temp_feel, y = rides )) +
+  geom_point(size=0.5) + 
+  geom_smooth(method = "lm", se=FALSE)
+```
+
+### Simulation via rstanarm
+
+Kita dapat menggunakan fungsi `stan_glm()` yang merupakan keluarga dari **generalized linear regression models (glm)**:
+```{r}
+bike_model <- stan_glm( rides ~ temp_feel, data = bikes, family = gaussian, prior_intercept = normal(5000, 1000),
+                        prior=normal(100,40),
+                        prior_aux = exponential(0.0008),
+                        chains=4, iter=5000*2, seed=84735)
+```
+
+Selanjutnya, kita hitung nilai rasio effective sample size dan R-hat sbb:
+
+```{r}
+# Effective sample size ratio and Rhat
+neff_ratio(bike_model)
+rhat(bike_model)
+```
+
+Kita cek juga trace dan density plots.
+
+```{r}
+# Trace plots of parallel chains
+mcmc_trace(bike_model, size=0.1)
+
+# Density plots of parallel chains
+mcmc_dens_overlay(bike_model)
+```
+
+### Optional: Simulation via rstan
+
+```{r}
+# STEP 1: DEFINE the model
+stan_bike_model <- "
+  data {
+    int<lower = 0> n;
+    vector[n] Y;
+    vector[n] X;
+  }
+  parameters {
+    real beta0;
+    real beta1;
+    real<lower = 0> sigma;
+  }
+  model {
+    Y ~ normal(beta0 + beta1 * X, sigma);
+    beta0 ~ normal(-2000, 1000);
+    beta1 ~ normal(100, 40);
+    sigma ~ exponential(0.0008);
+  }
+"
+```
+
+```{r}
+# STEP 2: SIMULATE the posterior
+stan_bike_model <- stan( model_code = stan_bike_model, 
+                         data = list(n = nrow(bikes), Y = bikes$rides, X = bikes$temp_feel), 
+                         chains=4, iter=5000*2, seed=84735)
+```
+
+## Interpreting the posterior
+
+Berikut kita rangkum koefisien regresi `fixed`, $\beta_0$ dan $\beta_1$, dan parameter `aux` (atau `auxiliary`) $\sigma$:
+
+```{r}
+# Posterior summary statistics
+tidy(bike_model, effects = c("fixed", "aux"), conf.int=TRUE, conf.level=0.8)
+```
+
+```{r}
+# Store the 4 chains for each parameter in 1 data frame
+bike_model_df <- as.data.frame(bike_model)
+
+# Check it out
+nrow(bike_model_df)
+head(bike_model_df,3)
+
+```
+
+```{r}
+# 50 simulated model lines
+bikes %>% add_fitted_draws(bike_model, n=50) %>%
+  ggplot(aes(x=temp_feel, y=rides)) +
+  geom_line(aes( y=.value, group=.draw), alpha=0.15) +
+  geom_point(data=bikes, size=0.05)
+```
+
+```{r}
+# Tabulate the beta_1 values that exceed 0
+bike_model_df %>% mutate(exceeds_0 = temp_feel > 0) %>% tabyl(exceeds_0)
+```
+
+```{r}
+# Simulate four sets of data
+bikes %>% add_predicted_draws(bike_model, ndraws=4) %>% 
+  ggplot(aes(x=temp_feel, y=rides)) + geom_point(aes(y=.prediction, group=.draw), size=0.2) + 
+  facet_wrap(~ .draw)
+```
+
+### Building a posterior predictive model
+
+```{r}
+first_set <- head(bike_model_df, 1)
+first_set
+```
+
+```{r}
+mu <- first_set$`(Intercept)` + first_set$temp_feel * 75
+mu
+```
+
+To capture the **sampling variability** around this average, we can simulate our first official prediction $Y_{new}^{(1)}$ by taking a random draw from the Normal model yang dispesifikasikan sbb:
+
+$$
+  Y_{new}^{(1)} \mid \beta_0, \beta_1, \sigma \sim N(3992.638,1280.101^2).
+$$
+
+```{r}
+set.seed(84735)
+y_new <- rnorm(1, mean=mu, sd=first_set$sigma)
+y_new
+```
+
+Kita coba simulasikan 19,999 lagi.
+
+```{r}
+# Predict rides for each parameter set in the chain
+set.seed(84735)
+predict_75 <- bike_model_df %>% mutate(mu=`(Intercept)` + temp_feel * 75, 
+                                       y_new = rnorm(20000, mean=mu, sd=sigma))
+```
+
+```{r}
+head(predict_75, 3)
+```
+
+Kita buat 80% posterior credible intervals.
+
+```{r}
+predict_75 %>% summarize(lower_mu = quantile(mu, 0.025),
+                         upper_mu = quantile(mu, 0.975),
+                         lower_new=quantile(y_new, 0.025),
+                         upper_new=quantile(y_new, 0.975))
+```
+
+```{r}
+# Plot the posterior model of the typical ridership on 75 degrees days
+ggplot(predict_75, aes(x=mu)) + geom_density()
+```
+
