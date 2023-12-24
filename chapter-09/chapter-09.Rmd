@@ -202,7 +202,7 @@ predict_75 <- bike_model_df %>% mutate(mu=`(Intercept)` + temp_feel * 75,
 head(predict_75, 3)
 ```
 
-Kita buat 80% posterior credible intervals.
+Kita buat 95% posterior credible intervals.
 
 ```{r}
 predict_75 %>% summarize(lower_mu = quantile(mu, 0.025),
@@ -213,6 +213,10 @@ predict_75 %>% summarize(lower_mu = quantile(mu, 0.025),
 
 ```{r}
 # Plot the posterior model of the typical ridership on 75 degrees days
-ggplot(predict_75, aes(x=mu)) + geom_density()
+ggplot(predict_75, aes(x=mu)) + xlim(-625, 8750)  +  geom_density()
+```
+```{r}
+# Plot the posterior predictive model of tomorrow's ridership
+ggplot(predict_75, aes(x=y_new)) +  ylim(0,0.007) +  geom_density() 
 ```
 
