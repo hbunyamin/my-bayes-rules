@@ -220,3 +220,86 @@ ggplot(predict_75, aes(x=mu)) + xlim(-625, 8750)  +  geom_density()
 ggplot(predict_75, aes(x=y_new)) +  ylim(0,0.007) +  geom_density() 
 ```
 
+### Posterior prediction with rstanarm
+
+```{r}
+# Simulate a set of predictions
+set.seed(84735)
+
+shortcut_prediction <- posterior_predict(bike_model, newdata = data.frame(temp_feel=75))
+```
+
+This `shortcut_prediction` object contains 20,000 predictions of ridership on 75-degree days. We can both visualize and summarize the corresponding (approximate) posterior predictive model using our usual tricks.
+
+```{r}
+# Construct a 95% posterior credible interval
+posterior_interval(shortcut_prediction, prob = 0.95)
+```
+
+```{r}
+# Plot the approximate predictive model
+mcmc_dens(shortcut_prediction) + xlab("predicted ridership on a 75 degree day")
+```
+
+
+## Sequential regression modeling
+
+```{r}
+bikes %>% select(date, temp_feel, rides) %>% head(3)
+```
+
+Misalkan kita diberikan akses ke data sedikit demi sedikit: 30 hari pertama, 60 hari pertama dan terakhir, keseluruhan 500 hari.
+
+```{r}
+phase_1 <- bikes[1:30,]
+phase_2 <- bikes[1:60,]
+phase_3 <- bikes
+```
+
+Kita coba re-simulate model posterior dengan memasang `data` (`phase_1`, `phase_2`, atau `phase_3`):
+
+```{r}
+my_model <- stan_glm(rides ~ temp_feel, data=phase_1, family = gaussian, prior_intercept = normal(5000, 1000),
+                     prior = normal(100,40), prior_aux = exponential(0.0008),
+                     chains=4, iter=5000*2, seed=84735)
+```
+
+```{r}
+mcmc_dens_overlay(my_model)
+```
+
+```{r}
+my_model <- stan_glm(rides ~ temp_feel, data=phase_2, family = gaussian, prior_intercept = normal(5000, 1000),
+                     prior = normal(100,40), prior_aux = exponential(0.0008),
+                     chains=4, iter=5000*2, seed=84735)
+```
+
+```{r}
+mcmc_dens_overlay(my_model)
+```
+
+
+```{r}
+my_model <- stan_glm(rides ~ temp_feel, data=phase_3, family = gaussian, prior_intercept = normal(5000, 1000),
+                     prior = normal(100,40), prior_aux = exponential(0.0008),
+                     chains=4, iter=5000*2, seed=84735)
+```
+
+
+```{r}
+mcmc_dens_overlay(my_model)
+```
+
+## Using default rstanarm priors
+
+```{r}
+bike_model_default <- stan_glm(
+  rides ~ temp_feel, data = bikes, family=gaussian,
+  prior_intercept = normal(5000, 2.5, autoscale = TRUE),
+  prior = normal(0, 2.5, autoscale = TRUE),
+  prior_aux = exponential(1, autoscale = TRUE),
+  chains=4, iter = 5000*2, seed=84735
+)
+```
+
+
