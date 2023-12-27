@@ -302,4 +302,9 @@ bike_model_default <- stan_glm(
 )
 ```
 
+```{r}
+prior_summary(bike_model_default)
+```
+
+Mari kita  
 
