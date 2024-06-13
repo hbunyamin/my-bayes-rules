@@ -6,6 +6,7 @@ library(tidyverse)
 library(broom.mixed)
 library(tidybayes)
 
+
 # Load the data
 data(weather_WU)
 weather_WU %>% 
