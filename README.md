@@ -2,3 +2,5 @@
 
 Please enjoy the scripts!
 We prefer using R scripts to _R Markdown_.
+
+Thank you!
