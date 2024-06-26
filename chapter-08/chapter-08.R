@@ -37,7 +37,7 @@ plot_beta_binomial(alpha = 4, beta = 6, y=14, n=100)
 # Berapakah estimasi kita untuk phi?
 # Apakah model kita mendukung klaim bahwa kurang dari 20% artist merupakan
 # Gen X atau lebih muda?
-# Jika kita sampel 20 aritst, berapa artist kita prediksi merupakan 
+# Jika kita sampel 20 artist, berapa artist kita prediksi merupakan 
 # Gen X atau lebih muda?
 
 
