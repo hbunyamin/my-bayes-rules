@@ -40,6 +40,13 @@ plot_beta_binomial(alpha = 4, beta = 6, y=14, n=100)
 # Jika kita sampel 20 artist, berapa artist kita prediksi merupakan 
 # Gen X atau lebih muda?
 
+# GOALS
+# ========
+# - Establish the theoretical foundations for the three posterior analysis tasks: 
+#     estimation, hypothesis testing, and prediction.
+# - Explore how Markov chain simulations can be used to approximate posterior 
+#     features, and hence be utilized in posterior analysis.
+
 
 
 
