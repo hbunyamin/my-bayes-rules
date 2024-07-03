@@ -47,7 +47,20 @@ plot_beta_binomial(alpha = 4, beta = 6, y=14, n=100)
 # - Explore how Markov chain simulations can be used to approximate posterior 
 #     features, and hence be utilized in posterior analysis.
 
+# 8.1 Posterior Estimation
+# ==============================
+# What best describes your posterior estimate of phi?
+# It’s most likely the case that roughly 16% of museum artists are 
+#   Gen X or younger, but that figure could plausibly be anywhere 
+#   between 9% and 26%.
 
+# 0.025th & 0.975th quantiles of the Beta(18,92) posterior
+qbeta(c(0.025, 0.975), 18, 92)
+# [1] 0.1009 0.2379
+
+# 0.25th & 0.75th quantiles of the Beta(18,92) posterior
+qbeta(c(0.25, 0.75), 18, 92)
+# [1] 0.1388 0.1862
 
 
 
