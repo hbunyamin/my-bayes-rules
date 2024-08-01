@@ -6,5 +6,5 @@ library(tidyverse)
 library(janitor)
 
 # Kita import article data
-
-
+data("fake_news")
+data()
